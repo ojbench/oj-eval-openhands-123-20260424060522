@@ -77,23 +77,28 @@ public:
 
   // 计算给定块ID在数据盘中的位置
   std::pair<int, int> get_data_disk_location(int block_id) {
-    int parity_disk = get_parity_disk(block_id);
-    int data_disk_id = block_id % get_data_disks_count();
+    int data_disks_count = get_data_disks_count();
+    int stripe_id = block_id / data_disks_count;  // Which stripe this block belongs to
+    int data_disk_offset = block_id % data_disks_count;  // Position within the data disks
     
-    // 如果数据盘ID大于等于奇偶校验盘位置，则需要跳过奇偶校验盘
+    // The parity disk for this stripe
+    int parity_disk = get_parity_disk(block_id);
+    
+    // Map the data disk offset to actual disk ID, skipping the parity disk
+    int data_disk_id = data_disk_offset;
     if (data_disk_id >= parity_disk) {
       data_disk_id++;
     }
     
-    int block_on_disk = block_id / get_data_disks_count();
-    return std::make_pair(data_disk_id, block_on_disk);
+    return std::make_pair(data_disk_id, stripe_id);
   }
 
   // 计算给定块ID的奇偶校验块位置
   std::pair<int, int> get_parity_block_location(int block_id) {
+    int data_disks_count = get_data_disks_count();
+    int stripe_id = block_id / data_disks_count;  // Which stripe this block belongs to
     int parity_disk = get_parity_disk(block_id);
-    int block_on_disk = block_id / get_data_disks_count();
-    return std::make_pair(parity_disk, block_on_disk);
+    return std::make_pair(parity_disk, stripe_id);
   }
 
   // 读取指定磁盘的指定块
