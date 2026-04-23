@@ -66,8 +66,10 @@ public:
 
   // 计算给定块ID的奇偶校验盘位置
   int get_parity_disk(int block_id) {
-    // RAID5使用轮转奇偶校验，奇偶校验盘位置随块ID变化
-    return (current_parity_disk_ + block_id) % num_disks_;
+    // RAID5使用轮转奇偶校验，奇偶校验盘位置随stripe变化
+    int data_disks_count = get_data_disks_count();
+    int stripe_id = block_id / data_disks_count;
+    return (current_parity_disk_ + stripe_id) % num_disks_;
   }
 
   // 计算给定块ID的数据盘数量（不包括奇偶校验盘）
