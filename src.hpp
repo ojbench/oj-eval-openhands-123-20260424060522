@@ -159,11 +159,12 @@ public:
     
     // 如果数据盘未故障，直接读取
     if (!failed_drives_[data_disk_id]) {
-      read_block_from_disk(data_disk_id, block_on_disk, result);
-      return;
+      if (read_block_from_disk(data_disk_id, block_on_disk, result)) {
+        return;
+      }
     }
     
-    // 数据盘故障，需要从其他盘恢复数据
+    // 数据盘故障或读取失败，需要从 other盘恢复数据
     // 读取同一组的所有其他数据块和奇偶校验块
     std::vector<char*> data_buffers;
     std::vector<int> data_disk_ids;
@@ -193,7 +194,7 @@ public:
     
     // 恢复数据：如果能读取奇偶校验块，则用奇偶校验块异或所有其他数据块
     // 如果奇偶校验块也故障，则无法恢复
-    if (parity_read) {
+    if (parity_read && !data_buffers.empty()) {
       // 初始化结果为奇偶校验块
       for (int i = 0; i < block_size_; i++) {
         result[i] = parity_buffer[i];
@@ -235,7 +236,10 @@ public:
     
     // 如果数据盘未故障，直接写入数据块
     if (!failed_drives_[data_disk_id]) {
-      write_block_to_disk(data_disk_id, block_on_disk, data);
+      if (!write_block_to_disk(data_disk_id, block_on_disk, data)) {
+        // If write fails, we can't proceed with parity calculation
+        return;
+      }
     }
     
     // 重新计算并写入奇偶校验块
